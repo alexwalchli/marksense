@@ -1,0 +1,43 @@
+<html>
+  <head>
+    <title>Marksense Demo</title>
+    <link rel="stylesheet" href="demo.css"></link>
+    <script src="bundle.js"></script>
+  </head>
+  <body>
+    <textarea id="code-corpus">
+export const removeChildNode = (nodeId, childId) => {
+  return {
+    type: REMOVE_CHILD_NODE,
+    nodeId,
+    payload: {
+      childId
+    }
+  };
+};
+    </textarea>
+
+    <textarea id="code-input"></textarea>
+
+    <h5>Generated Code Snippet:</h5>
+    <p id="snippet"></p>
+
+    <script>
+      // TODO: Make this actually do something. Bring in an intellisense UI. 
+
+      window.onload = function(){
+        var code = document.getElementById('code-corpus').innerHTML,
+                   markSense = new MarkSense();
+
+        markSense.generateMarkovChain(code);
+
+        document.getElementById('code-input').onkeyup = function(e){
+          var suggestions = markSense.getSuggestions(e.currentTarget.value);
+          document.getElementById('snippet').innerHTML = suggestions;
+        }
+      }
+
+    </script>
+
+  </body>
+</html>

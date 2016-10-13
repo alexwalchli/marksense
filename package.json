@@ -1,0 +1,27 @@
+{
+  "name": "marksense",
+  "version": "0.0.1",
+  "description": "Super powered intellisense",
+  "main": "index.js",
+  "scripts": {
+    "test": "jasmine"
+  },
+  "repository": {
+    "type": "git",
+    "url": "marksense"
+  },
+  "keywords": [
+    "intellisense",
+    "productivity"
+  ],
+  "author": "Alex Walchli",
+  "license": "ISC",
+  "devDependencies": {
+    "babel": "^6.5.2",
+    "babel-loader": "^6.2.5",
+    "babel-preset-es2015": "^6.16.0",
+    "babel-preset-stage-0": "^6.16.0",
+    "jasmine": "^2.5.2",
+    "webpack": "^1.13.2"
+  }
+}
