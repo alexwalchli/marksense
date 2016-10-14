@@ -8,7 +8,7 @@ A
   B
     C`;
 
-    const result = markSense.generateMarkovChain(corpus);
+    const result = markSense.generateSnippetSuggestionTree(corpus);
 
     expect(result).toEqual({   
       "__ROOT__": {
@@ -23,19 +23,22 @@ A
         parent: '__ROOT__',
         children: [
           { code: 'B', probability: 1, count: 1 }
-        ]
+        ],
+        ngrams: ['A']
       },
       "B": {
         depth: 2,
         parent: 'A',
         children: [
           { code: 'C', probability: 1, count: 1 }
-        ]
+        ],
+        ngrams: ['B']
       },
       "C": {
         depth: 3,
         parent: 'B',
-        children: []
+        children: [],
+        ngrams: ['C']
       },
     });
   });
@@ -48,7 +51,7 @@ A
     C
     D`;
 
-    const result = markSense.generateMarkovChain(corpus);
+    const result = markSense.generateSnippetSuggestionTree(corpus);
 
     expect(result).toEqual({
        "__ROOT__": {
@@ -63,7 +66,8 @@ A
         parent: '__ROOT__',
         children: [
           { code: "B", probability: 1, count: 1 }
-        ]
+        ],
+        ngrams: ['A']
       },
       "B": {
         depth: 2,
@@ -71,17 +75,20 @@ A
         children: [
           { code: "C", probability: 0.5, count: 1 },
           { code: "D", probability: 0.5, count: 1 }
-        ]
+        ],
+        ngrams: ['B']
       },
       "C": {
         depth: 3,
         parent: 'B',
-        children: []
+        children: [],
+        ngrams: ['C']
       },
       "D": {
         depth: 3,
         parent: 'B',
-        children: []
+        children: [],
+        ngrams: ['D']
       }
     });
   });
@@ -95,7 +102,7 @@ A
     D
 E`;
 
-    const result = markSense.generateMarkovChain(corpus);
+    const result = markSense.generateSnippetSuggestionTree(corpus);
 
     expect(result).toEqual({
        "__ROOT__": {
@@ -111,7 +118,8 @@ E`;
         parent: '__ROOT__',
         children: [
           { code: "B", probability: 1, count: 1 }
-        ]
+        ],
+        ngrams: ['A']
       },
       "B": {
         depth: 2,
@@ -119,22 +127,26 @@ E`;
         children: [
           { code: "C", probability: 0.5, count: 1 },
           { code: "D", probability: 0.5, count: 1 }
-        ]
+        ],
+        ngrams: ['B']
       },
       "C": {
         depth: 3,
         parent: 'B',
-        children: []
+        children: [],
+        ngrams: ['C']
       },
       "D": {
         depth: 3,
         parent: 'B',
-        children: []
+        children: [],
+        ngrams: ['D']
       },
       "E": {
         depth: 1,
         parent: '__ROOT__',
-        children: []
+        children: [],
+        ngrams: ['E']
       }
     });
   });
@@ -147,7 +159,7 @@ A
 A
   C`;
 
-    const result = markSense.generateMarkovChain(corpus);
+    const result = markSense.generateSnippetSuggestionTree(corpus);
 
     expect(result).toEqual({
        "__ROOT__": {
@@ -163,17 +175,20 @@ A
         children: [
           { code: "B", probability: 0.5, count: 1 },
           { code: "C", probability: 0.5, count: 1 }
-        ]
+        ],
+        ngrams: ['A']
       },
       "B": {
         depth: 2,
         parent: 'A',
-        children: []
+        children: [],
+        ngrams: ['B']
       },
       "C": {
         depth: 2,
         parent: 'A',
-        children: []
+        children: [],
+        ngrams: ['C']
       }
     });
   });

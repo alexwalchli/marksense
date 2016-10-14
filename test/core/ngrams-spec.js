@@ -13,7 +13,7 @@ describe('nGrams', () => {
 
     expect(result).toEqual(['n-g', '-gr', 'gra', 'ram']);
   });
-  it('should return value of n is equal to length of value', () => {
+  it('should return value if n is equal to or greater than length of value', () => {
     const value = 'n-gram',
           result = nGrams(value, 6);
 

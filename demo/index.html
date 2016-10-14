@@ -5,6 +5,7 @@
     <script src="bundle.js"></script>
   </head>
   <body>
+    <h5>Corpus</h5>
     <textarea id="code-corpus">
 export const removeChildNode = (nodeId, childId) => {
   return {
@@ -17,6 +18,7 @@ export const removeChildNode = (nodeId, childId) => {
 };
     </textarea>
 
+    <h5>Input</h5>
     <textarea id="code-input"></textarea>
 
     <h5>Generated Code Snippet:</h5>
@@ -31,9 +33,21 @@ export const removeChildNode = (nodeId, childId) => {
 
         markSense.generateSnippetSuggestionTree(code);
 
+        var selectedSuggestionIndex = 0;
+        var selectedSuggestionDepth = 0;
         document.getElementById('code-input').onkeyup = function(e){
           var suggestions = markSense.getSnippetSuggestions(e.currentTarget.value);
-          document.getElementById('snippet').innerHTML = suggestions;
+          var suggestionsEl = document.getElementById('snippet');
+
+          if(e.code === 'ArrowRight'){
+            suggestionsEl.innerHTML = suggestions[selectedSuggestionIndex].snippet + '<br />' + suggestions[selectedSuggestionIndex].next[selectedSuggestionDepth].code;
+            selectedSuggestionDepth++;
+          } else if(e.code === 'ArrowDown'){
+            suggestionsEl.innerHTML = suggestions[selectedSuggestionIndex].snippet + '<br />' + suggestions[selectedSuggestionIndex].next[selectedSuggestionDepth].code;
+            selectedSuggestionIndex++;
+          } else {
+            suggestionsEl.innerHTML = suggestions[selectedSuggestionIndex].snippet;
+          }
         }
       }
 

@@ -1,7 +1,7 @@
 export default (value, n) => {
   let ngrams = [];
 
-  if(value.length === n){
+  if(value.length <= n){
     return [value];
   }
 

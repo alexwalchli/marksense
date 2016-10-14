@@ -1,10 +1,14 @@
+import nGrams from './ngrams';
+
 export default class MarkSense{
   constructor(){
   }
 
   // TODO: This can probably be done in a single loop 
   // but will do for a prototype for now.
-  // TODO: generate n-grams for finding suggestions
+  // TODO: consolidate lines of code based on form not content
+  //  ex: "it('should do something', () => {" and "it('and also do something else', () => {"
+  //      should be consolidated into "it('{variable}', () =>"
   generateSnippetSuggestionTree(corpus){
     const lines = corpus.split(`\n`).filter(line => !(line === null || line.match(/^ *$/) !== null || line.indexOf('}') > -1))
       .map(l => { return {
@@ -13,36 +17,38 @@ export default class MarkSense{
       };
     });
 
-    var chain = {};
-    chain['__ROOT__'] = {
+    var tree = {};
+    tree['__ROOT__'] = {
       depth: 0,
       children: [],
-      parent: undefined
+      parent: undefined,
+      ngrams: []
     };
 
     for(let i = 0; i < lines.length; i++){
       const line = lines[i],
             parent = this.getParentFromIndex(lines, i, line.depth);
 
-      if(chain[line.code]){
-        chain[parent.code].children.find((child) => child.code === line.code).count++;
+      if(tree[line.code]){
+        tree[parent.code].children.find((child) => child.code === line.code).count++;
       } else {
-        chain[parent.code].children.push({
+        tree[parent.code].children.push({
           code: line.code,
           probability: 0,
           count: 1
         });
 
-        chain[line.code] = {
+        tree[line.code] = {
           depth: line.depth,
           parent: parent.code,
-          children: []
+          children: [],
+          ngrams: nGrams(line.code, 2)
         };
       }
     }
 
-    Object.keys(chain).forEach(key => {
-      const node = chain[key],
+    Object.keys(tree).forEach(key => {
+      const node = tree[key],
                   childrenCount = node.children.reduce((acc, curr) => {
                     return acc + curr.count;
                   }, 0);
@@ -51,15 +57,25 @@ export default class MarkSense{
         });
     });
 
-    this.chain = chain;
+    this.snippetSuggestionTree = tree;
 
-    return chain;
+    return tree;
   }
 
   getSnippetSuggestions(code){
-    // TODO: generate n-grams and use them to find suggestions from partially typed lines
+    let suggestions = [];
+    Object.keys(this.snippetSuggestionTree).forEach(key => {
+      let snippet = this.snippetSuggestionTree[key];
+      if(key.startsWith(code) || snippet.ngrams.includes(code)){
+        suggestions.push({
+          snippet: key,
+          next: snippet.children,
+          prev: snippet.parent
+        });
+      }
+    });
 
-    return this.chain[code];
+    return suggestions;
   }
 
   getParentFromIndex(lines, idx, currDepth){
