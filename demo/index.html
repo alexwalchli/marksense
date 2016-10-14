@@ -29,10 +29,10 @@ export const removeChildNode = (nodeId, childId) => {
         var code = document.getElementById('code-corpus').innerHTML,
                    markSense = new MarkSense();
 
-        markSense.generateMarkovChain(code);
+        markSense.generateSnippetSuggestionTree(code);
 
         document.getElementById('code-input').onkeyup = function(e){
-          var suggestions = markSense.getSuggestions(e.currentTarget.value);
+          var suggestions = markSense.getSnippetSuggestions(e.currentTarget.value);
           document.getElementById('snippet').innerHTML = suggestions;
         }
       }

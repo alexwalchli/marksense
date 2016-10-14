@@ -5,7 +5,7 @@ export default class MarkSense{
   // TODO: This can probably be done in a single loop 
   // but will do for a prototype for now.
   // TODO: generate n-grams for finding suggestions
-  generateMarkovChain(corpus){
+  generateSnippetSuggestionTree(corpus){
     const lines = corpus.split(`\n`).filter(line => !(line === null || line.match(/^ *$/) !== null || line.indexOf('}') > -1))
       .map(l => { return {
         code: l.trim(),
@@ -56,7 +56,7 @@ export default class MarkSense{
     return chain;
   }
 
-  getSuggestions(code){
+  getSnippetSuggestions(code){
     // TODO: generate n-grams and use them to find suggestions from partially typed lines
 
     return this.chain[code];
