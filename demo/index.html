@@ -7,47 +7,70 @@
   <body>
     <h5>Corpus</h5>
     <textarea id="code-corpus">
-export const removeChildNode = (nodeId, childId) => {
+export const nodeCreated = (newNode) => {
   return {
-    type: REMOVE_CHILD_NODE,
-    nodeId,
-    payload: {
-      childId
-    }
+    type: NODE_CREATED,
+    nodeId: newNode.id,
+    payload: newNode
   };
+};
+
+export const nodeUpdated = (updatedNode) => {
+  return {
+    type: NODE_UPDATED,
+    nodeId: updatedNode.id,
+    payload: updatedNode
+  };
+};
+
+export const xplusy = (x, y) => {
+  return x + y;
+};
+
+export const xplusy = (x, y, z) => {
+  return x + y + z;
 };
     </textarea>
 
     <h5>Input</h5>
+    <p>Type 'exp'. Press right arrow for more detailed snippets. Left arrow for less detailed snippets</p>
     <textarea id="code-input"></textarea>
 
     <h5>Generated Code Snippet:</h5>
     <p id="snippet"></p>
 
     <script>
-      // TODO: Make this actually do something. Bring in an intellisense UI. 
+      function setSnippetSuggestions(snippets){
+        var suggestionsEl = document.getElementById('snippet');
+        suggestionsEl.innerHTML = snippets.map(s => s + '<br />');
+      }
 
       window.onload = function(){
         var code = document.getElementById('code-corpus').innerHTML,
                    markSense = new MarkSense();
 
-        markSense.generateSnippetSuggestionTree(code);
+        markSense.generateSnippetTree(code);
 
-        var selectedSuggestionIndex = 0;
-        var selectedSuggestionDepth = 0;
+        var suggestions = [];
         document.getElementById('code-input').onkeyup = function(e){
-          var suggestions = markSense.getSnippetSuggestions(e.currentTarget.value);
-          var suggestionsEl = document.getElementById('snippet');
+          
+          var suggestionHtml = '';
 
           if(e.code === 'ArrowRight'){
-            suggestionsEl.innerHTML = suggestions[selectedSuggestionIndex].snippet + '<br />' + suggestions[selectedSuggestionIndex].next[selectedSuggestionDepth].code;
-            selectedSuggestionDepth++;
+            suggestions = markSense.getDeeperSnippet();
+          } else if(e.code === 'ArrowLeft'){
+            suggestions = markSense.getShallowerSnippet();
           } else if(e.code === 'ArrowDown'){
-            suggestionsEl.innerHTML = suggestions[selectedSuggestionIndex].snippet + '<br />' + suggestions[selectedSuggestionIndex].next[selectedSuggestionDepth].code;
-            selectedSuggestionIndex++;
+            suggestions = markSense.getSnippetBelow();
+          } else if(e.code === 'ArrowUp'){
+            suggestions = markSense.getSnippetAbove();
           } else {
-            suggestionsEl.innerHTML = suggestions[selectedSuggestionIndex].snippet;
+            suggestions = markSense.search(document.getElementById('code-input').value);
+
+            markSense.newRootSnippet(suggestions[0]);
           }
+
+          setSnippetSuggestions(suggestions);
         }
       }
 
