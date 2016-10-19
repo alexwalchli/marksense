@@ -1,11 +1,10 @@
-import MarkSense from '../../src/core/marksense';
-import {expect} from 'chai';
-import ngrams from '../../src/core/ngrams';
+import MarkSense from '../../src/core/marksense'
+import {describe, it} from 'mocha'
+import {expect} from 'chai'
 
 describe('marksense', () => {
-
   describe('snippet search', () => {
-        const code = `
+    const code = `
 export const nodeCreated = (newNode) => {
   return {
     type: NODE_CREATED,
@@ -24,22 +23,16 @@ export const nodeUpdated = (updatedNode) => {
 
 export const xplusy = (x, y) => {
   return x + y;
-};`;
+};`
 
-    const markSense = new MarkSense();
-    markSense.generateSnippetTree(code);
+    const markSense = new MarkSense()
+    markSense.generateSnippetTree(code)
 
     it('should set rootKey and currentSnippets', () => {
-      const value = `ex`,
-            result = markSense.search(value);
+      const value = `ex`
+      const result = markSense.search(value)
 
-      expect(result).to.deep.equal([]);
-
-    });
-  
-  });
-
-});
-
-
-
+      expect(result).to.deep.equal([])
+    })
+  })
+})
