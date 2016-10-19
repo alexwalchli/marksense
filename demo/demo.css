@@ -1,6 +1,18 @@
-#code-corpus{
+body{
+  padding:60px;
+}
+
+.hero{
+  font-family: 'Raleway', sans-serif;
+}
+
+.hero h1{
+  font-size:3em;
+}
+
+.CodeMirror{
   width:100%;
-  min-height:300px;
+  height:500px;
 }
 
 #code-input{

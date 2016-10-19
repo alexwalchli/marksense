@@ -1,5 +1,6 @@
 import nGrams from './ngrams';
 import * as acorn from 'acorn';
+import * as esprima from 'esprima';
 
 export default class MarkSense{
   constructor(){
@@ -13,8 +14,7 @@ export default class MarkSense{
         .replace(/&#039;/g, "'");
   }
 
-  // TODO: This can probably be done in a single loop 
-  // but will do for a prototype for now.
+  // TODO: Lots of needed here not that API is defined
   generateSnippetTree(corpus){
     const lines = corpus.split(`\n`).filter(line => !(line === null || line.match(/^ *$/) !== null || line.indexOf('}') > -1))
       .map(l => { return {
@@ -23,10 +23,10 @@ export default class MarkSense{
       };
     });
 
-    var tree = {};
+    let snippetTree = {};
     this.searchIndex = {};
 
-    tree.__ROOT__ = {
+    snippetTree.__ROOT__ = {
       depth: 0,
       parent: undefined,
       children: []
@@ -35,23 +35,23 @@ export default class MarkSense{
     for(let i = 0; i < lines.length; i++){
       const line = lines[i],
             parent = this.getParentFromIndex(lines, i, line.depth),
-            tokens = [...acorn.tokenizer(line.code)];
+            tokens = [...acorn.tokenizer(line.code)],
+            originalCode = line.code;
 
-      const originalCodeLength = line.code.length;
+      const originalCodeLength = originalCode.length;
       let newCodeLength  = originalCodeLength;
       let tokenOffset = 0;
       tokens.forEach(token => {
-        if(token.type.label === 'name'){
+        if(token.type.label === 'name' || token.type.label === 'string'){
           let replaceToken = `{${token.type.label}}`;
-          line.code = line.code.slice(0, token.start + tokenOffset) + replaceToken + line.code.slice(token.start + tokenOffset + token.value.length);
-
-          newCodeLength = originalCodeLength + (replaceToken.length - token.value.length);
-          tokenOffset = newCodeLength - originalCodeLength;
+          // TODO: tokenOffset is offseting to the left off by one because I'm offsetting on both sides'
+          line.code = line.code.slice(0, token.start + tokenOffset) + replaceToken + line.code.slice(token.end + tokenOffset, line.code.length);
+          tokenOffset = line.code.length - originalCodeLength;
         }
       });
 
-      const twoLetternGram = line.code.substring(0, 2);
-      const threeLetternGram = line.code.substring(0, 3);
+      const twoLetternGram = originalCode.substring(0, 2);
+      const threeLetternGram = originalCode.substring(0, 3);
       this.searchIndex[twoLetternGram] = this.searchIndex[twoLetternGram] || [];
       this.searchIndex[threeLetternGram] = this.searchIndex[threeLetternGram] || [];
       if(this.searchIndex[twoLetternGram].indexOf(line.code) === -1){
@@ -61,16 +61,24 @@ export default class MarkSense{
         this.searchIndex[threeLetternGram].push(line.code);
       }
 
-      if(tree[line.code]){
-        tree[parent.code].children.find((child) => child.code === line.code).count++;
+      if(snippetTree[line.code]){
+        if(snippetTree[parent.code].children.find((child) => child.code === line.code)){
+          snippetTree[parent.code].children.find((child) => child.code === line.code).count++;
+        } else {
+          snippetTree[parent.code].children.push({
+            code: line.code,
+            probability: 0,
+            count: 1
+          });
+        }
       } else {
-        tree[parent.code].children.push({
+        snippetTree[parent.code].children.push({
           code: line.code,
           probability: 0,
           count: 1
         });
        
-        tree[line.code] = {
+        snippetTree[line.code] = {
           depth: line.depth,
           parent: parent.code,
           children: []
@@ -78,8 +86,8 @@ export default class MarkSense{
       }
     }
 
-    Object.keys(tree).forEach(key => {
-      const node = tree[key],
+    Object.keys(snippetTree).forEach(key => {
+      const node = snippetTree[key],
                   childrenCount = node.children.reduce((acc, curr) => {
                     return acc + curr.count;
                   }, 0);
@@ -88,15 +96,13 @@ export default class MarkSense{
         });
     });
 
-    this.snippetTree = tree;
+    this.snippetTree = snippetTree;
     
-    return tree;
+    return snippetTree;
   }
 
   search(code){
-    console.log(this.searchIndex)
-    console.log(this.searchIndex[code])
-    return this.searchIndex[code];
+    return this.searchIndex[code] || [];
   }
 
   getParentFromIndex(lines, idx, currDepth){

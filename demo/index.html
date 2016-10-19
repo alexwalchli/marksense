@@ -1,12 +1,31 @@
 <html>
   <head>
     <title>Marksense Demo</title>
-    <link rel="stylesheet" href="demo.css"></link>
+    <link rel="stylesheet" href="codemirror.css"></link>
+    <link rel="stylesheet" href="seti.css"></link>
+    <link rel="stylesheet" href="show-hint.css"></link>
+    <link rel="stylesheet" href="demo.css"></link>  
+    <link href="https://fonts.googleapis.com/css?family=Raleway" rel="stylesheet">  
     <script src="bundle.js"></script>
+    <script src="codemirror.js"></script>
+    <script src="javascript.js"></script>
+    <script src="show-hint.js"></script>
   </head>
   <body>
-    <h5>Corpus</h5>
-    <textarea id="code-corpus">
+    <div class="hero">
+      <h1>marksense</h1>
+      <p>A work in progress. Dynamic code snippets generated from patterns in your code base.</p>
+      <p>Try it out: Start by typing 'exp' in the code editor below</p>
+    </div>
+    
+    <textarea id="code">
+describe('some thing', () => {
+  it('should do something', () => {
+  })
+  it('should do something else', () => {
+  })
+})
+
 export const nodeCreated = (newNode) => {
   return {
     type: NODE_CREATED,
@@ -26,18 +45,7 @@ export const nodeUpdated = (updatedNode) => {
 export const xplusy = (x, y) => {
   return x + y;
 };
-
-export const xplusy = (x, y, z) => {
-  return x + y + z;
-};
     </textarea>
-
-    <h5>Input</h5>
-    <p>Type 'exp'. Press right arrow for more detailed snippets. Left arrow for less detailed snippets</p>
-    <textarea id="code-input"></textarea>
-
-    <h5>Generated Code Snippet:</h5>
-    <p id="snippet"></p>
 
     <script>
       function setSnippetSuggestions(snippets){
@@ -46,32 +54,54 @@ export const xplusy = (x, y, z) => {
       }
 
       window.onload = function(){
-        var code = document.getElementById('code-corpus').innerHTML,
-                   markSense = new MarkSense();
 
-        markSense.generateSnippetTree(code);
+        var editor = CodeMirror.fromTextArea(document.getElementById('code'), {
+              mode: 'javascript',
+              lineNumbers: true,
+              theme: 'seti',
+              extraKeys: {"Ctrl-Space": "autocomplete"}
+            }),
+            markSense = new MarkSense();
+        
+        CodeMirror.hint.javascript = function(cm) {
+          var cursor = cm.getCursor(), line = cm.getLine(cursor.line)
+          var start = cursor.ch, end = cursor.ch
+          while (start && /\w/.test(line.charAt(start - 1))) --start
+          while (end < line.length && /\w/.test(line.charAt(end))) ++end
+          var word = line.slice(start, end).toLowerCase()
+          var suggestions = markSense.search(word);
+          markSense.newRootSnippet(suggestions[0]);
+          var inner = {from: cm.getCursor(), to: cm.getCursor(), list: []};
+          inner.list = suggestions;
+          return inner;
+        };
+        
+        editor.on("keyup", function (cm, event) {
+          if (!cm.state.completionActive && /*Enables keyboard navigation in autocomplete list*/
+            event.keyCode != 13) {        /*Enter - do not open autocomplete list just after item has been selected in it*/ 
+              switch(event.code){
+                case 'ArrowRight': {
+                  suggestions = markSense.getDeeperSnippet();
+                }
+                case 'ArrowLeft': {
+                  suggestions = markSense.getDeeperSnippet();
+                }
+                case 'ArrowDown': {
+                  suggestions = markSense.getDeeperSnippet();
+                }
+                case 'ArrowUp': {
+                  suggestions = markSense.getDeeperSnippet();
+                }
+                default: {
+                  CodeMirror.commands.autocomplete(cm, null, {completeSingle: false});
+                }
+              }
+            }
 
-        var suggestions = [];
-        document.getElementById('code-input').onkeyup = function(e){
-          
-          var suggestionHtml = '';
+            return;
+        });
 
-          if(e.code === 'ArrowRight'){
-            suggestions = markSense.getDeeperSnippet();
-          } else if(e.code === 'ArrowLeft'){
-            suggestions = markSense.getShallowerSnippet();
-          } else if(e.code === 'ArrowDown'){
-            suggestions = markSense.getSnippetBelow();
-          } else if(e.code === 'ArrowUp'){
-            suggestions = markSense.getSnippetAbove();
-          } else {
-            suggestions = markSense.search(document.getElementById('code-input').value);
-
-            markSense.newRootSnippet(suggestions[0]);
-          }
-
-          setSnippetSuggestions(suggestions);
-        }
+        markSense.generateSnippetTree(document.getElementById('code').innerHTML);
       }
 
     </script>
