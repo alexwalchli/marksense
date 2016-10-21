@@ -2,24 +2,8 @@ import * as acorn from 'acorn'
 
 export default class MarkSense {
 
-  unescapeHtml (str) {
-    return str.replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#039;/g, "'")
-  }
-
   // TODO: Lots of needed here not that API is defined
-  generateSnippetTree (corpus) {
-    const lines = corpus.split(`\n`).filter(line => !(line === null || line.match(/^ *$/) !== null || line.indexOf('}') > -1))
-      .map(l => {
-        return {
-          code: this.unescapeHtml(l.trim()),
-          depth: this.depth(l)
-        }
-      })
-
+  generateSnippetTree (code) {
     let snippetTree = {}
     this.searchIndex = {}
 
@@ -29,53 +13,41 @@ export default class MarkSense {
       children: []
     }
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const parent = this.getParentFromIndex(lines, i, line.depth)
-      const tokens = [...acorn.tokenizer(line.code)]
-      const originalCode = line.code
-      const originalCodeLength = originalCode.length
+    // TODO: loop through and clean/parse/tokenize/calculate depth, before going through and creating the snippet tree
+    const linesOfCode = code.split('\n')
 
-      let tokenOffset = 0
-      tokens.forEach(token => {
-        if (token.type.label === 'name' || token.type.label === 'string') {
-          let replaceToken = `{${token.type.label}}`
-          // TODO: tokenOffset is offseting to the left off by one because I'm offsetting on both sides'
-          line.code = line.code.slice(0, token.start + tokenOffset) + replaceToken + line.code.slice(token.end + tokenOffset, line.code.length)
-          tokenOffset = line.code.length - originalCodeLength
-        }
-      })
-
-      const twoLetternGram = originalCode.substring(0, 2)
-      const threeLetternGram = originalCode.substring(0, 3)
-      this.searchIndex[twoLetternGram] = this.searchIndex[twoLetternGram] || []
-      this.searchIndex[threeLetternGram] = this.searchIndex[threeLetternGram] || []
-      if (this.searchIndex[twoLetternGram].indexOf(line.code) === -1) {
-        this.searchIndex[twoLetternGram].push(line.code)
-      }
-      if (this.searchIndex[threeLetternGram].indexOf(line.code) === -1) {
-        this.searchIndex[threeLetternGram].push(line.code)
+    for (let i = 0; i < linesOfCode.length; i++) {
+      const depth = this.depth(linesOfCode[i])
+      const lineOfCode = this.unescapeHtml(linesOfCode[i].trim())
+      if (this.isWhitespaceOrEmptyOrClosing(lineOfCode)) {
+        continue
       }
 
-      if (snippetTree[line.code]) {
-        if (snippetTree[parent.code].children.find((child) => child.code === line.code)) {
-          snippetTree[parent.code].children.find((child) => child.code === line.code).count++
+      const parent = this.getParentFromIndex(linesOfCode, i, depth)
+      let tokenizedCode = this.tokenizeLineOfCode(lineOfCode)
+
+      this.updateSearchIndex(lineOfCode, tokenizedCode)
+
+      if (snippetTree[tokenizedCode]) {
+        if (snippetTree[parent.tokenizedCode].children.find((child) => child.tokenizedCode === tokenizedCode)) {
+          snippetTree[parent.tokenizedCode].children.find((child) => child.tokenizedCode === tokenizedCode).count++
         } else {
-          snippetTree[parent.code].children.push({
-            code: line.code,
+          snippetTree[parent.tokenizedCode].children.push({
+            tokenizedCode: tokenizedCode,
             probability: 0,
             count: 1
           })
         }
       } else {
-        snippetTree[parent.code].children.push({
-          code: line.code,
+        snippetTree[parent.tokenizedCode].children.push({
+          tokenizedCode: tokenizedCode,
           probability: 0,
           count: 1
         })
-        snippetTree[line.code] = {
-          depth: line.depth,
-          parent: parent.code,
+        snippetTree[tokenizedCode] = {
+          tokenizedCode: tokenizedCode,
+          depth: depth,
+          parent: parent.tokenizedCode,
           children: []
         }
       }
@@ -100,15 +72,15 @@ export default class MarkSense {
     return this.searchIndex[code] || []
   }
 
-  getParentFromIndex (lines, idx, currDepth) {
+  getParentFromIndex (linesOfCode, idx, currDepth) {
     if (currDepth === 1) {
-      return { code: '__ROOT__', depth: 0 }
+      return { tokenizedCode: '__ROOT__', depth: 0, children: [] }
     }
 
     // traverse backwards until a node is hit with less depth, it's parent
     for (let i = idx - 1; i >= 0; i--) {
-      if (lines[i].depth < currDepth) {
-        return lines[i]
+      if (this.depth(linesOfCode[i]) < currDepth) {
+        return linesOfCode[i]
       }
     }
   }
@@ -176,5 +148,45 @@ export default class MarkSense {
     this.currentSnippets.push(this.snippetTree[parent.children(parent.children.indexOf(this.currentKey) - 1)]) // add the snippet from one branch over
 
     return [...this.currentSnippets]
+  }
+
+  unescapeHtml (str) {
+    return str.replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+  }
+
+  isWhitespaceOrEmptyOrClosing (lineOfCode) {
+    return lineOfCode === null || lineOfCode.match(/^ *$/) !== null || lineOfCode.indexOf('}') > -1
+  }
+
+  tokenizeLineOfCode (lineOfCode) {
+    const tokens = [...acorn.tokenizer(lineOfCode)]
+    let tokenizedCode = lineOfCode
+    let tokenOffset = 0
+    tokens.forEach(token => {
+      if (token.type.label === 'name' || token.type.label === 'string') {
+        let replaceToken = `{${token.type.label}}`
+        tokenizedCode = tokenizedCode.slice(0, token.start + tokenOffset) + replaceToken + tokenizedCode.slice(token.end + tokenOffset, tokenizedCode.length)
+        tokenOffset = tokenizedCode.length - lineOfCode.length
+      }
+    })
+
+    return tokenizedCode
+  }
+
+  updateSearchIndex (lineOfCode, tokenizedCode) {
+    const twoLetternGram = lineOfCode.substring(0, 2)
+    const threeLetternGram = lineOfCode.substring(0, 3)
+    this.searchIndex[twoLetternGram] = this.searchIndex[twoLetternGram] || []
+    this.searchIndex[threeLetternGram] = this.searchIndex[threeLetternGram] || []
+    if (this.searchIndex[twoLetternGram].indexOf(tokenizedCode) === -1) {
+      this.searchIndex[twoLetternGram].push(tokenizedCode)
+    }
+    if (this.searchIndex[threeLetternGram].indexOf(tokenizedCode) === -1) {
+      this.searchIndex[threeLetternGram].push(tokenizedCode)
+    }
   }
 }

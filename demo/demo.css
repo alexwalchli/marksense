@@ -1,13 +1,21 @@
 body{
-  padding:60px;
+  padding:0;
+  margin:0;
 }
 
 .hero{
+  padding:30px 60px 30px 60px;
   font-family: 'Raleway', sans-serif;
 }
 
 .hero h1{
+  margin-top:0;
   font-size:3em;
+}
+
+.codemirror-wrapper{
+  width:100%;
+  background-color:#151718;
 }
 
 .CodeMirror{

@@ -17,8 +17,8 @@
       <p>A work in progress. Dynamic code snippets generated from patterns in your code base.</p>
       <p>Try it out: Start by typing 'exp' in the code editor below</p>
     </div>
-    
-    <textarea id="code">
+    <div class="codemirror-wrapper">
+      <textarea id="code">
 describe('some thing', () => {
   it('should do something', () => {
   })
@@ -45,8 +45,9 @@ export const nodeUpdated = (updatedNode) => {
 export const xplusy = (x, y) => {
   return x + y;
 };
-    </textarea>
-
+      </textarea>
+    </div>
+  
     <script>
       function setSnippetSuggestions(snippets){
         var suggestionsEl = document.getElementById('snippet');

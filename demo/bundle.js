@@ -89,26 +89,12 @@
 	  }
 	
 	  _createClass(MarkSense, [{
-	    key: 'unescapeHtml',
-	    value: function unescapeHtml(str) {
-	      return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-	    }
+	    key: 'generateSnippetTree',
+	
 	
 	    // TODO: Lots of needed here not that API is defined
-	
-	  }, {
-	    key: 'generateSnippetTree',
-	    value: function generateSnippetTree(corpus) {
+	    value: function generateSnippetTree(code) {
 	      var _this = this;
-	
-	      var lines = corpus.split('\n').filter(function (line) {
-	        return !(line === null || line.match(/^ *$/) !== null || line.indexOf('}') > -1);
-	      }).map(function (l) {
-	        return {
-	          code: _this.unescapeHtml(l.trim()),
-	          depth: _this.depth(l)
-	        };
-	      });
 	
 	      var snippetTree = {};
 	      this.searchIndex = {};
@@ -119,64 +105,54 @@
 	        children: []
 	      };
 	
+	      // TODO: loop through and clean/parse/tokenize/calculate depth, before going through and creating the snippet tree
+	      var linesOfCode = code.split('\n');
+	
 	      var _loop = function _loop(i) {
-	        var line = lines[i];
-	        var parent = _this.getParentFromIndex(lines, i, line.depth);
-	        var tokens = [].concat(_toConsumableArray(acorn.tokenizer(line.code)));
-	        var originalCode = line.code;
-	        var originalCodeLength = originalCode.length;
-	
-	        var tokenOffset = 0;
-	        tokens.forEach(function (token) {
-	          if (token.type.label === 'name' || token.type.label === 'string') {
-	            var replaceToken = '{' + token.type.label + '}';
-	            // TODO: tokenOffset is offseting to the left off by one because I'm offsetting on both sides'
-	            line.code = line.code.slice(0, token.start + tokenOffset) + replaceToken + line.code.slice(token.end + tokenOffset, line.code.length);
-	            tokenOffset = line.code.length - originalCodeLength;
-	          }
-	        });
-	
-	        var twoLetternGram = originalCode.substring(0, 2);
-	        var threeLetternGram = originalCode.substring(0, 3);
-	        _this.searchIndex[twoLetternGram] = _this.searchIndex[twoLetternGram] || [];
-	        _this.searchIndex[threeLetternGram] = _this.searchIndex[threeLetternGram] || [];
-	        if (_this.searchIndex[twoLetternGram].indexOf(line.code) === -1) {
-	          _this.searchIndex[twoLetternGram].push(line.code);
-	        }
-	        if (_this.searchIndex[threeLetternGram].indexOf(line.code) === -1) {
-	          _this.searchIndex[threeLetternGram].push(line.code);
+	        var depth = _this.depth(linesOfCode[i]);
+	        var lineOfCode = _this.unescapeHtml(linesOfCode[i].trim());
+	        if (_this.isWhitespaceOrEmptyOrClosing(lineOfCode)) {
+	          return 'continue';
 	        }
 	
-	        if (snippetTree[line.code]) {
-	          if (snippetTree[parent.code].children.find(function (child) {
-	            return child.code === line.code;
+	        var parent = _this.getParentFromIndex(linesOfCode, i, depth);
+	        var tokenizedCode = _this.tokenizeLineOfCode(lineOfCode);
+	
+	        _this.updateSearchIndex(lineOfCode, tokenizedCode);
+	
+	        if (snippetTree[tokenizedCode]) {
+	          if (snippetTree[parent.tokenizedCode].children.find(function (child) {
+	            return child.tokenizedCode === tokenizedCode;
 	          })) {
-	            snippetTree[parent.code].children.find(function (child) {
-	              return child.code === line.code;
+	            snippetTree[parent.tokenizedCode].children.find(function (child) {
+	              return child.tokenizedCode === tokenizedCode;
 	            }).count++;
 	          } else {
-	            snippetTree[parent.code].children.push({
-	              code: line.code,
+	            snippetTree[parent.tokenizedCode].children.push({
+	              tokenizedCode: tokenizedCode,
 	              probability: 0,
 	              count: 1
 	            });
 	          }
 	        } else {
-	          snippetTree[parent.code].children.push({
-	            code: line.code,
+	          snippetTree[parent.tokenizedCode].children.push({
+	            tokenizedCode: tokenizedCode,
 	            probability: 0,
 	            count: 1
 	          });
-	          snippetTree[line.code] = {
-	            depth: line.depth,
-	            parent: parent.code,
+	          snippetTree[tokenizedCode] = {
+	            tokenizedCode: tokenizedCode,
+	            depth: depth,
+	            parent: parent.tokenizedCode,
 	            children: []
 	          };
 	        }
 	      };
 	
-	      for (var i = 0; i < lines.length; i++) {
-	        _loop(i);
+	      for (var i = 0; i < linesOfCode.length; i++) {
+	        var _ret = _loop(i);
+	
+	        if (_ret === 'continue') continue;
 	      }
 	
 	      Object.keys(snippetTree).forEach(function (key) {
@@ -200,15 +176,15 @@
 	    }
 	  }, {
 	    key: 'getParentFromIndex',
-	    value: function getParentFromIndex(lines, idx, currDepth) {
+	    value: function getParentFromIndex(linesOfCode, idx, currDepth) {
 	      if (currDepth === 1) {
-	        return { code: '__ROOT__', depth: 0 };
+	        return { tokenizedCode: '__ROOT__', depth: 0, children: [] };
 	      }
 	
 	      // traverse backwards until a node is hit with less depth, it's parent
 	      for (var i = idx - 1; i >= 0; i--) {
-	        if (lines[i].depth < currDepth) {
-	          return lines[i];
+	        if (this.depth(linesOfCode[i]) < currDepth) {
+	          return linesOfCode[i];
 	        }
 	      }
 	    }
@@ -294,6 +270,46 @@
 	      this.currentSnippets.push(this.snippetTree[parent.children(parent.children.indexOf(this.currentKey) - 1)]); // add the snippet from one branch over
 	
 	      return [].concat(_toConsumableArray(this.currentSnippets));
+	    }
+	  }, {
+	    key: 'unescapeHtml',
+	    value: function unescapeHtml(str) {
+	      return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+	    }
+	  }, {
+	    key: 'isWhitespaceOrEmptyOrClosing',
+	    value: function isWhitespaceOrEmptyOrClosing(lineOfCode) {
+	      return lineOfCode === null || lineOfCode.match(/^ *$/) !== null || lineOfCode.indexOf('}') > -1;
+	    }
+	  }, {
+	    key: 'tokenizeLineOfCode',
+	    value: function tokenizeLineOfCode(lineOfCode) {
+	      var tokens = [].concat(_toConsumableArray(acorn.tokenizer(lineOfCode)));
+	      var tokenizedCode = lineOfCode;
+	      var tokenOffset = 0;
+	      tokens.forEach(function (token) {
+	        if (token.type.label === 'name' || token.type.label === 'string') {
+	          var replaceToken = '{' + token.type.label + '}';
+	          tokenizedCode = tokenizedCode.slice(0, token.start + tokenOffset) + replaceToken + tokenizedCode.slice(token.end + tokenOffset, tokenizedCode.length);
+	          tokenOffset = tokenizedCode.length - lineOfCode.length;
+	        }
+	      });
+	
+	      return tokenizedCode;
+	    }
+	  }, {
+	    key: 'updateSearchIndex',
+	    value: function updateSearchIndex(lineOfCode, tokenizedCode) {
+	      var twoLetternGram = lineOfCode.substring(0, 2);
+	      var threeLetternGram = lineOfCode.substring(0, 3);
+	      this.searchIndex[twoLetternGram] = this.searchIndex[twoLetternGram] || [];
+	      this.searchIndex[threeLetternGram] = this.searchIndex[threeLetternGram] || [];
+	      if (this.searchIndex[twoLetternGram].indexOf(tokenizedCode) === -1) {
+	        this.searchIndex[twoLetternGram].push(tokenizedCode);
+	      }
+	      if (this.searchIndex[threeLetternGram].indexOf(tokenizedCode) === -1) {
+	        this.searchIndex[threeLetternGram].push(tokenizedCode);
+	      }
 	    }
 	  }]);
 	
