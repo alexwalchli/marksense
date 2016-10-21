@@ -15,13 +15,14 @@ describe('marksense', () => {
           parent: undefined,
           children: [
             {
-              code: 'export const {name} = ({name}, {name}) => {',
+              tokenizedCode: 'export const {name} = ({name}, {name}) => {',
               probability: 1,
               count: 1
             }
           ]
         },
         'export const {name} = ({name}, {name}) => {': {
+          tokenizedCode: 'export const {name} = ({name}, {name}) => {',
           depth: 1,
           parent: '__ROOT__',
           children: []
@@ -45,13 +46,14 @@ export const nodeUpdated = (updatedNode) => {
           parent: undefined,
           children: [
             {
-              code: 'export const {name} = ({name}) => {',
+              tokenizedCode: 'export const {name} = ({name}) => {',
               probability: 1,
               count: 2
             }
           ]
         },
         'export const {name} = ({name}) => {': {
+          tokenizedCode: 'export const {name} = ({name}) => {',
           depth: 1,
           parent: '__ROOT__',
           children: []

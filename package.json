@@ -4,6 +4,7 @@
   "description": "Super powered intellisense",
   "main": "index.js",
   "scripts": {
+    "build": "standard 'src/**/*.js' 'test/**/*.js' --fix && webpack",
     "test": "standard 'src/**/*.js' 'test/**/*.js' --fix && mocha"
   },
   "repository": {

@@ -72,7 +72,7 @@ export const hmmIdk = (y) => {
         expect(markSense.currentKey).to.deep.equal(rootKey)
       })
 
-      it('should currentSnippets if we are back to the rootKey', () => {
+      it('should return currentSnippets if we are back to the rootKey', () => {
         const rootKey = `export const {name} = ({name}) => {`
         markSense.newRootSnippet(rootKey)
         markSense.getDeeperSnippet()

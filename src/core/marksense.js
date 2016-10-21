@@ -13,40 +13,32 @@ export default class MarkSense {
       children: []
     }
 
-    // TODO: loop through and clean/parse/tokenize/calculate depth, before going through and creating the snippet tree
-    const linesOfCode = code.split('\n')
-
+    const linesOfCode = this.cleanAndParseCodeIntoLines(code)
     for (let i = 0; i < linesOfCode.length; i++) {
-      const depth = this.depth(linesOfCode[i])
-      const lineOfCode = this.unescapeHtml(linesOfCode[i].trim())
-      if (this.isWhitespaceOrEmptyOrClosing(lineOfCode)) {
-        continue
-      }
+      const lineOfCode = linesOfCode[i]
+      const parent = this.getParentFromIndex(linesOfCode, i, lineOfCode.depth)
 
-      const parent = this.getParentFromIndex(linesOfCode, i, depth)
-      let tokenizedCode = this.tokenizeLineOfCode(lineOfCode)
+      this.updateSearchIndex(lineOfCode, lineOfCode.ttokenizedCode)
 
-      this.updateSearchIndex(lineOfCode, tokenizedCode)
-
-      if (snippetTree[tokenizedCode]) {
-        if (snippetTree[parent.tokenizedCode].children.find((child) => child.tokenizedCode === tokenizedCode)) {
-          snippetTree[parent.tokenizedCode].children.find((child) => child.tokenizedCode === tokenizedCode).count++
+      if (snippetTree[lineOfCode.tokenizedCode]) {
+        if (snippetTree[parent.tokenizedCode].children.find((child) => child.tokenizedCode === lineOfCode.tokenizedCode)) {
+          snippetTree[parent.tokenizedCode].children.find((child) => child.tokenizedCode === lineOfCode.tokenizedCode).count++
         } else {
           snippetTree[parent.tokenizedCode].children.push({
-            tokenizedCode: tokenizedCode,
+            tokenizedCode: lineOfCode.tokenizedCode,
             probability: 0,
             count: 1
           })
         }
       } else {
         snippetTree[parent.tokenizedCode].children.push({
-          tokenizedCode: tokenizedCode,
+          tokenizedCode: lineOfCode.tokenizedCode,
           probability: 0,
           count: 1
         })
-        snippetTree[tokenizedCode] = {
-          tokenizedCode: tokenizedCode,
-          depth: depth,
+        snippetTree[lineOfCode.tokenizedCode] = {
+          tokenizedCode: lineOfCode.tokenizedCode,
+          depth: lineOfCode.depth,
           parent: parent.tokenizedCode,
           children: []
         }
@@ -79,14 +71,14 @@ export default class MarkSense {
 
     // traverse backwards until a node is hit with less depth, it's parent
     for (let i = idx - 1; i >= 0; i--) {
-      if (this.depth(linesOfCode[i]) < currDepth) {
+      if (linesOfCode[i].depth < currDepth) {
         return linesOfCode[i]
       }
     }
   }
 
-  depth (line) {
-    return line.split('  ').length
+  depth (code) {
+    return code.split('  ').length
   }
 
   // Starting over
@@ -103,8 +95,8 @@ export default class MarkSense {
 
     // TODO: If this path is at it's lowest depth', get the neighbor below it
     if (nextSnippet) {
-      this.currentKey = nextSnippet.code
-      this.currentSnippets.push(nextSnippet.code)
+      this.currentKey = nextSnippet.tokenizedCode
+      this.currentSnippets.push(nextSnippet.tokenizedCode)
       return [...this.currentSnippets]
     } else {
       return [...this.currentSnippets]
@@ -118,20 +110,20 @@ export default class MarkSense {
       this.currentKey = this.currentSnippets[this.currentSnippets.length - 1]
       return [...this.currentSnippets]
     } else {
-      return []
+      return [this.currentKey]
     }
   }
 
   // Moving down in intellisense
   getSnippetBelow () {
     const parent = this.snippetTree[this.snippetTree[this.currentKey].parent]
-    const indexOfCurrentSnippet = parent.children.map(child => child.code).indexOf(this.currentKey)
+    const indexOfCurrentSnippet = parent.children.map(child => child.tokenizedCode).indexOf(this.currentKey)
     const neighbor = parent.children[indexOfCurrentSnippet + 1]
 
     if (neighbor) {
       this.currentSnippets.splice(this.currentSnippets.length - 1, 1) // remove the tail and then
-      this.currentSnippets.push(neighbor.code) // add the snippet from one branch over
-      this.currentKey = neighbor.code
+      this.currentSnippets.push(neighbor.tokenizedCode) // add the snippet from one branch over
+      this.currentKey = neighbor.tokenizedCode
     }
 
     return [...this.currentSnippets]
@@ -177,16 +169,33 @@ export default class MarkSense {
     return tokenizedCode
   }
 
-  updateSearchIndex (lineOfCode, tokenizedCode) {
-    const twoLetternGram = lineOfCode.substring(0, 2)
-    const threeLetternGram = lineOfCode.substring(0, 3)
+  updateSearchIndex (lineOfCode) {
+    const twoLetternGram = lineOfCode.code.substring(0, 2)
+    const threeLetternGram = lineOfCode.code.substring(0, 3)
     this.searchIndex[twoLetternGram] = this.searchIndex[twoLetternGram] || []
     this.searchIndex[threeLetternGram] = this.searchIndex[threeLetternGram] || []
-    if (this.searchIndex[twoLetternGram].indexOf(tokenizedCode) === -1) {
-      this.searchIndex[twoLetternGram].push(tokenizedCode)
+    if (this.searchIndex[twoLetternGram].indexOf(lineOfCode.tokenizedCode) === -1) {
+      this.searchIndex[twoLetternGram].push(lineOfCode.tokenizedCode)
     }
-    if (this.searchIndex[threeLetternGram].indexOf(tokenizedCode) === -1) {
-      this.searchIndex[threeLetternGram].push(tokenizedCode)
+    if (this.searchIndex[threeLetternGram].indexOf(lineOfCode.tokenizedCode) === -1) {
+      this.searchIndex[threeLetternGram].push(lineOfCode.tokenizedCode)
     }
+  }
+
+  cleanAndParseCodeIntoLines (code) {
+    if (!code) {
+      return []
+    }
+
+    return this.unescapeHtml(code)
+            .split('\n')
+            .filter(loc => !this.isWhitespaceOrEmptyOrClosing(loc))
+            .map(loc => {
+              return {
+                depth: this.depth(loc),
+                code: loc.trim(),
+                tokenizedCode: this.tokenizeLineOfCode(loc.trim())
+              }
+            })
   }
 }

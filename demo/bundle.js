@@ -105,44 +105,37 @@
 	        children: []
 	      };
 	
-	      // TODO: loop through and clean/parse/tokenize/calculate depth, before going through and creating the snippet tree
-	      var linesOfCode = code.split('\n');
+	      var linesOfCode = this.cleanAndParseCodeIntoLines(code);
 	
 	      var _loop = function _loop(i) {
-	        var depth = _this.depth(linesOfCode[i]);
-	        var lineOfCode = _this.unescapeHtml(linesOfCode[i].trim());
-	        if (_this.isWhitespaceOrEmptyOrClosing(lineOfCode)) {
-	          return 'continue';
-	        }
+	        var lineOfCode = linesOfCode[i];
+	        var parent = _this.getParentFromIndex(linesOfCode, i, lineOfCode.depth);
 	
-	        var parent = _this.getParentFromIndex(linesOfCode, i, depth);
-	        var tokenizedCode = _this.tokenizeLineOfCode(lineOfCode);
+	        _this.updateSearchIndex(lineOfCode, lineOfCode.ttokenizedCode);
 	
-	        _this.updateSearchIndex(lineOfCode, tokenizedCode);
-	
-	        if (snippetTree[tokenizedCode]) {
+	        if (snippetTree[lineOfCode.tokenizedCode]) {
 	          if (snippetTree[parent.tokenizedCode].children.find(function (child) {
-	            return child.tokenizedCode === tokenizedCode;
+	            return child.tokenizedCode === lineOfCode.ttokenizedCode;
 	          })) {
 	            snippetTree[parent.tokenizedCode].children.find(function (child) {
-	              return child.tokenizedCode === tokenizedCode;
+	              return child.tokenizedCode === lineOfCode.ttokenizedCode;
 	            }).count++;
 	          } else {
 	            snippetTree[parent.tokenizedCode].children.push({
-	              tokenizedCode: tokenizedCode,
+	              tokenizedCode: lineOfCode.tokenizedCode,
 	              probability: 0,
 	              count: 1
 	            });
 	          }
 	        } else {
 	          snippetTree[parent.tokenizedCode].children.push({
-	            tokenizedCode: tokenizedCode,
+	            tokenizedCode: lineOfCode.tokenizedCode,
 	            probability: 0,
 	            count: 1
 	          });
-	          snippetTree[tokenizedCode] = {
-	            tokenizedCode: tokenizedCode,
-	            depth: depth,
+	          snippetTree[lineOfCode.tokenizedCode] = {
+	            tokenizedCode: lineOfCode.tokenizedCode,
+	            depth: lineOfCode.depth,
 	            parent: parent.tokenizedCode,
 	            children: []
 	          };
@@ -150,9 +143,7 @@
 	      };
 	
 	      for (var i = 0; i < linesOfCode.length; i++) {
-	        var _ret = _loop(i);
-	
-	        if (_ret === 'continue') continue;
+	        _loop(i);
 	      }
 	
 	      Object.keys(snippetTree).forEach(function (key) {
@@ -183,15 +174,15 @@
 	
 	      // traverse backwards until a node is hit with less depth, it's parent
 	      for (var i = idx - 1; i >= 0; i--) {
-	        if (this.depth(linesOfCode[i]) < currDepth) {
+	        if (linesOfCode[i].depth < currDepth) {
 	          return linesOfCode[i];
 	        }
 	      }
 	    }
 	  }, {
 	    key: 'depth',
-	    value: function depth(line) {
-	      return line.split('  ').length;
+	    value: function depth(code) {
+	      return code.split('  ').length;
 	    }
 	
 	    // Starting over
@@ -214,8 +205,8 @@
 	
 	      // TODO: If this path is at it's lowest depth', get the neighbor below it
 	      if (nextSnippet) {
-	        this.currentKey = nextSnippet.code;
-	        this.currentSnippets.push(nextSnippet.code);
+	        this.currentKey = nextSnippet.tokenizedCode;
+	        this.currentSnippets.push(nextSnippet.tokenizedCode);
 	        return [].concat(_toConsumableArray(this.currentSnippets));
 	      } else {
 	        return [].concat(_toConsumableArray(this.currentSnippets));
@@ -243,14 +234,14 @@
 	    value: function getSnippetBelow() {
 	      var parent = this.snippetTree[this.snippetTree[this.currentKey].parent];
 	      var indexOfCurrentSnippet = parent.children.map(function (child) {
-	        return child.code;
+	        return child.tokenizedCode;
 	      }).indexOf(this.currentKey);
 	      var neighbor = parent.children[indexOfCurrentSnippet + 1];
 	
 	      if (neighbor) {
 	        this.currentSnippets.splice(this.currentSnippets.length - 1, 1); // remove the tail and then
-	        this.currentSnippets.push(neighbor.code); // add the snippet from one branch over
-	        this.currentKey = neighbor.code;
+	        this.currentSnippets.push(neighbor.tokenizedCode); // add the snippet from one branch over
+	        this.currentKey = neighbor.tokenizedCode;
 	      }
 	
 	      return [].concat(_toConsumableArray(this.currentSnippets));
@@ -300,8 +291,8 @@
 	  }, {
 	    key: 'updateSearchIndex',
 	    value: function updateSearchIndex(lineOfCode, tokenizedCode) {
-	      var twoLetternGram = lineOfCode.substring(0, 2);
-	      var threeLetternGram = lineOfCode.substring(0, 3);
+	      var twoLetternGram = lineOfCode.code.substring(0, 2);
+	      var threeLetternGram = lineOfCode.code.substring(0, 3);
 	      this.searchIndex[twoLetternGram] = this.searchIndex[twoLetternGram] || [];
 	      this.searchIndex[threeLetternGram] = this.searchIndex[threeLetternGram] || [];
 	      if (this.searchIndex[twoLetternGram].indexOf(tokenizedCode) === -1) {
@@ -310,6 +301,25 @@
 	      if (this.searchIndex[threeLetternGram].indexOf(tokenizedCode) === -1) {
 	        this.searchIndex[threeLetternGram].push(tokenizedCode);
 	      }
+	    }
+	  }, {
+	    key: 'cleanAndParseCodeIntoLines',
+	    value: function cleanAndParseCodeIntoLines(code) {
+	      var _this2 = this;
+	
+	      if (!code) {
+	        return [];
+	      }
+	
+	      return this.unescapeHtml(code).split('\n').filter(function (loc) {
+	        return !_this2.isWhitespaceOrEmptyOrClosing(loc);
+	      }).map(function (loc) {
+	        return {
+	          depth: _this2.depth(loc),
+	          code: loc.trim(),
+	          tokenizedCode: _this2.tokenizeLineOfCode(loc.trim())
+	        };
+	      });
 	    }
 	  }]);
 	

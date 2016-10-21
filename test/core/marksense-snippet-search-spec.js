@@ -28,11 +28,11 @@ export const xplusy = (x, y) => {
     const markSense = new MarkSense()
     markSense.generateSnippetTree(code)
 
-    it('should set rootKey and currentSnippets', () => {
+    it('should return results starting with a two letter ngram', () => {
       const value = `ex`
       const result = markSense.search(value)
 
-      expect(result).to.deep.equal([])
+      expect(result).to.deep.equal(['export const {name} = ({name}) => {', 'export const {name} = ({name}, {name}) => {'])
     })
   })
 })
