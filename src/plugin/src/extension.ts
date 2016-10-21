@@ -21,9 +21,21 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('Hello World!');
     });
 
+    vscode.languages.registerCompletionItemProvider('javascript', new MarkSenseCompletionItemProvider, '.')
+
     context.subscriptions.push(disposable);
 }
 
 // this method is called when your extension is deactivated
 export function deactivate() {
+}
+
+class MarkSenseCompletionItemProvider implements vscode.CompletionItemProvider{
+    public provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): Promise<vscode.CompletionItem[]> {
+      let myItem = new vscode.CompletionItem(`export const {{0:string}} => {\n  {{1:string}}\n}`, vscode.CompletionItemKind.Snippet)
+			return Promise.resolve<vscode.CompletionItem[]>([myItem]);
+	}
+
+	public resolveCompletionItem(item: vscode.CompletionItem, token: vscode.CancellationToken): any | Thenable<any> {
+    }
 }
