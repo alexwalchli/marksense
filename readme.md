@@ -1,7 +1,7 @@
 #MarkSense
 AI-assisted programming through dynamically generated code snippets embedded in intellisense.
 
-Work in progress <a href="https://alexwalchli.github.io/marksense/demo">demo</a>. 
+Demo: http://g.recordit.co/6HhCS3JKXM.gif
 
 ##Goals
 - Try to double coding speed
